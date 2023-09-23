@@ -38,9 +38,6 @@ class UserController extends base_controller_1.default {
             const currentIp = req.clientIp ? [req.clientIp] : [];
             const meCandidate = Object.assign(Object.assign({}, tokenData), { uid, ips: currentIp });
             const me = yield user_service_1.default.getMe(meCandidate);
-
-            throw new Error();
-            
             if (me.banId > 0) {
                 const message = (0, ban_message_1.banMessage)(me.unbanAt, me.banId);
                 return next(error_list_1.ERROR.BANNED(message));
