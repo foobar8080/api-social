@@ -23,8 +23,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+/* eslint-disable @typescript-eslint/no-unused-vars */
+const sequelize_1 = require("sequelize");
 const models_1 = require("../../database/models");
 const error_list_1 = require("../../shared/exception-handler/error-list");
+const date_helper_1 = __importDefault(require("../../shared/helpers/date.helper"));
 const base_service_1 = __importDefault(require("../../shared/services/base.service"));
 const findOrCreateAttributes = [
     'uid',
@@ -33,11 +36,12 @@ const findOrCreateAttributes = [
     'avatar',
     'role',
     'details',
+    'banId',
+    'unbanAt',
     'ips',
     'createdAt',
     'profileUpdatedAt',
-    'pro',
-    'proEnd' // To rename `pro_end` to `proEnd` use ['pro_end', 'proEnd']
+    'pro' // To rename `pro` to `proX` use ['pro', 'proX']
 ];
 const findOrCreateInclude = [
     {
@@ -49,6 +53,8 @@ const findOrCreateInclude = [
         attributes: ['followingUid']
     }
 ];
+const PROFILE_UPDATE_INTERVAL_IN_DAYS = process.env.PROFILE_UPDATE_INTERVAL_IN_DAYS;
+const profileUpdateIntervalInDays = parseInt(PROFILE_UPDATE_INTERVAL_IN_DAYS, 10);
 class UserService extends base_service_1.default {
     /**
      * - Create / Get me from `Users` table
@@ -70,7 +76,7 @@ class UserService extends base_service_1.default {
             // Later, the function `modifyUserToDesiredStructure`, will modify user data to desired structure
             const [userRecord, isUserCreated] = yield _super.findOrCreate.call(this, { uid }, { attributes: findOrCreateAttributes, include: findOrCreateInclude, defaults: Object.assign({}, candidate) });
             const user = this.modifyUserToDesiredStructure(userRecord, isUserCreated);
-            // If user just created or IP is missing or IP already in user's IPs -> return me
+            // If user just created or IP is missing or IP already in user's IPs -> return user
             if (isUserCreated || !ip || user.ips.includes(ip))
                 return user;
             // Update the user's IPs and return the updated user
@@ -85,8 +91,8 @@ class UserService extends base_service_1.default {
         let user;
         if (isUserCreated) {
             // Here `userFromDb` have `IMeFromDbNewRecord` interface
-            // Exclude googleId, firebaseId, proEnd, updatedAt
-            const _c = userFromDb, { googleId, firebaseId, proEnd, updatedAt } = _c, userFromDbUpdated = __rest(_c, ["googleId", "firebaseId", "proEnd", "updatedAt"]);
+            // Exclude googleId, firebaseId, updatedAt
+            const _c = userFromDb, { googleId, firebaseId, updatedAt } = _c, userFromDbUpdated = __rest(_c, ["googleId", "firebaseId", "updatedAt"]);
             user = Object.assign(Object.assign({}, userFromDbUpdated), { followers: [], following: [], friends: [], followersCount: 0, followingCount: 0, friendsCount: 0 });
         }
         else {
@@ -116,9 +122,9 @@ class UserService extends base_service_1.default {
                 followersCount,
                 friendsCount });
         }
-        // Remove `proEnd` and `followers` property from the user object
-        if (user.pro === 0) {
-            const { proEnd, followers } = user, updatedUser = __rest(user, ["proEnd", "followers"]);
+        // Remove `followers` property from the user object
+        if (user.pro.level === 0) {
+            const { followers } = user, updatedUser = __rest(user, ["followers"]);
             user = updatedUser;
         }
         return user;
@@ -165,6 +171,68 @@ class UserService extends base_service_1.default {
                 throw error_list_1.ERROR.NOT_FOUND();
             const users = updatedRows.map((user) => user.toJSON());
             return users.length > 1 ? users : users[0];
+        });
+    }
+    /**
+     * Update `name`, `details`, `profileUpdatedAt` in `Users` table
+     */
+    updateUserInfo(update, uid) {
+        const _super = Object.create(null, {
+            updateBulk: { get: () => super.updateBulk }
+        });
+        return __awaiter(this, void 0, void 0, function* () {
+            const dateXDaysAgo = date_helper_1.default.calculateDate(profileUpdateIntervalInDays, 'past');
+            const where = {
+                uid,
+                // [Op.or] logical OR condition to match records that satisfy at least one of the conditions inside the array:
+                [sequelize_1.Op.or]: [
+                    {
+                        profileUpdatedAt: {
+                            [sequelize_1.Op.lte]: dateXDaysAgo // profileUpdatedAt <= dateXDaysAgo
+                        }
+                    },
+                    {
+                        profileUpdatedAt: {
+                            [sequelize_1.Op.is]: null // profileUpdatedAt === null
+                        }
+                    },
+                    {
+                        pro: {
+                            level: {
+                                [sequelize_1.Op.gt]: 0 // pro.level > 0
+                            },
+                            end: {
+                                [sequelize_1.Op.gt]: new Date() // pro.end > current date
+                            }
+                        }
+                    }
+                ]
+            };
+            const [rowsCount] = (yield _super.updateBulk.call(this, update, Object.assign({}, where), false));
+            if (rowsCount === 0)
+                return false;
+            return true;
+        });
+    }
+    /**
+     * Update `pro` in `Users` table
+     */
+    updateProRecord(uid) {
+        const _super = Object.create(null, {
+            updateBulk: { get: () => super.updateBulk }
+        });
+        return __awaiter(this, void 0, void 0, function* () {
+            const end = date_helper_1.default.calculateDate(30, 'future');
+            const proUpdate = {
+                level: 1,
+                end: new Date(end)
+            };
+            const update = { pro: proUpdate };
+            const where = { uid };
+            const [rowsCount] = (yield _super.updateBulk.call(this, update, Object.assign({}, where), false));
+            if (rowsCount === 0)
+                return false;
+            return true;
         });
     }
     /**

@@ -199,6 +199,16 @@ class BaseService {
             }
         });
     }
+    // ---------------------------------
+    // Count
+    // ---------------------------------
+    count(where, options = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const findOptions = Object.assign(Object.assign({}, options), { where });
+            const count = yield this.model.count(findOptions);
+            return count;
+        });
+    }
     // **********************************************************************************
     // **********************************************************************************
     // **********************************************************************************
@@ -206,12 +216,6 @@ class BaseService {
     //   const entity = await this.model.findByPk(id, options);
     //   return entity;
     // }
-    count(options) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const count = yield this.model.count(options);
-            return count;
-        });
-    }
     findAndCountAll(where, options = {}) {
         return __awaiter(this, void 0, void 0, function* () {
             const _a = options || {}, { offset, limit } = _a, otherOptions = __rest(_a, ["offset", "limit"]);

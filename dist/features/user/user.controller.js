@@ -31,6 +31,7 @@ const error_list_1 = require("../../shared/exception-handler/error-list");
 class UserController extends base_controller_1.default {
     /**
      * Create / Get one record in `Users` table
+     * @returns IMeReturnToClient
      */
     authorizeMe() {
         return this.asyncWrap((req, res, next) => __awaiter(this, void 0, void 0, function* () {
@@ -40,7 +41,7 @@ class UserController extends base_controller_1.default {
             const me = yield user_service_1.default.getMe(meCandidate);
             if (me.banId > 0) {
                 const message = (0, ban_message_1.banMessage)(me.unbanAt, me.banId);
-                return next(error_list_1.ERROR.BANNED(message));
+                return next(error_list_1.ERROR.FORBIDDEN(message));
             }
             // Exclude `banId`, `unbanAt`, `ips`
             const { banId, unbanAt, ips } = me, meResult = __rest(me, ["banId", "unbanAt", "ips"]);
@@ -72,24 +73,30 @@ class UserController extends base_controller_1.default {
         }));
     }
     /**
-     * Update `name`, `details` in `Users` table
+     * Update `name`, `details`, `profileUpdatedAt` in `Users` table
      */
     updateUserInfo() {
         return this.asyncWrap((req, res, next) => __awaiter(this, void 0, void 0, function* () {
             // See app.use(express.json({ limit: '2000' })); in index.ts
             // console.log('Request body size (in bytes):', Buffer.byteLength(JSON.stringify(req.body), 'utf8'));
             const { uid, name, details } = req.body;
-            const update = {
-                profileUpdatedAt: new Date()
-            };
+            const update = { profileUpdatedAt: new Date() };
             if (name)
                 update.name = name;
             if (details)
                 update.details = Object.assign({}, details);
-            const updatedUser = (yield user_service_1.default.updateUsers(update, { uid }));
-            if (!updatedUser)
-                return next(error_list_1.ERROR.NOT_FOUND());
-            this.sendResponse(res, {});
+            const success = yield user_service_1.default.updateUserInfo(update, uid);
+            this.sendResponse(res, {}, 200, success);
+        }));
+    }
+    /**
+     * Update `pro` in `Users` table
+     */
+    updateProRecord() {
+        return this.asyncWrap((req, res, next) => __awaiter(this, void 0, void 0, function* () {
+            const { uid } = req.body;
+            const success = yield user_service_1.default.updateProRecord(uid);
+            this.sendResponse(res, {}, 200, success);
         }));
     }
     /**

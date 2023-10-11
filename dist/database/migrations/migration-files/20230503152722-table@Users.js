@@ -40,11 +40,12 @@ const up = ({ context: sequelize }) => __awaiter(void 0, void 0, void 0, functio
             defaultValue: 'user'
         },
         pro: {
-            type: sequelize_1.DataTypes.INTEGER,
-            defaultValue: 0
-        },
-        proEnd: {
-            type: sequelize_1.DataTypes.DATE
+            type: sequelize_1.DataTypes.JSONB,
+            allowNull: false,
+            defaultValue: {
+                level: 0,
+                end: null
+            }
         },
         ips: {
             type: sequelize_1.DataTypes.ARRAY(sequelize_1.DataTypes.STRING),

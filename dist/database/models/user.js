@@ -18,8 +18,14 @@ User.init({
     avatar: sequelize_1.DataTypes.STRING,
     email: sequelize_1.DataTypes.STRING,
     role: sequelize_1.DataTypes.STRING,
-    pro: sequelize_1.DataTypes.INTEGER,
-    proEnd: sequelize_1.DataTypes.DATE,
+    pro: {
+        type: sequelize_1.DataTypes.JSONB,
+        allowNull: false,
+        defaultValue: {
+            level: 0,
+            end: null
+        }
+    },
     ips: sequelize_1.DataTypes.ARRAY(sequelize_1.DataTypes.STRING),
     details: {
         type: sequelize_1.DataTypes.JSONB,

@@ -43,7 +43,7 @@ class BannedUserService extends base_service_1.default {
         });
         return __awaiter(this, void 0, void 0, function* () {
             const banTermInDays = banned_user_helper_1.banInfo[banId].term;
-            const unbanAt = date_helper_1.default.calculateFutureDate(banTermInDays);
+            const unbanAt = date_helper_1.default.calculateDate(banTermInDays, 'future');
             const banUpdate = {
                 banId,
                 unbanAt: new Date(unbanAt)

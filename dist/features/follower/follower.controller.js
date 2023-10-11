@@ -21,12 +21,13 @@ class FollowerController extends base_controller_1.default {
      */
     follow() {
         return this.asyncWrap((req, res, next) => __awaiter(this, void 0, void 0, function* () {
-            const { uid, followUid } = req.body;
-            if (uid === followUid)
-                return next(error_list_1.ERROR.BAD_FOLLOW_REQUEST('A user cannot follow themselves.'));
-            yield follower_service_1.default.follow(uid, followUid);
-            const message = `Follow user with uid ${followUid} was successful.`;
-            this.sendResponse(res, { message });
+            const { uid, followingUid, pro } = req.body;
+            if (!this.isUidCorrect(followingUid, uid))
+                return next(error_list_1.ERROR.BAD_REQUEST('Follow failed.'));
+            const isFollowSuccess = yield follower_service_1.default.follow(uid, followingUid, pro);
+            if (!isFollowSuccess)
+                return next(error_list_1.ERROR.BAD_REQUEST('Follow failed.'));
+            this.sendResponse(res, null);
         }));
     }
     /**
@@ -34,19 +35,22 @@ class FollowerController extends base_controller_1.default {
      */
     unfollow() {
         return this.asyncWrap((req, res, next) => __awaiter(this, void 0, void 0, function* () {
-            const { uid, unfollowUid } = req.body;
-            if (uid === unfollowUid)
-                return next(error_list_1.ERROR.BAD_FOLLOW_REQUEST('A user cannot unfollow themselves.'));
-            const deleteNumber = yield follower_service_1.default.unfollow(uid, unfollowUid);
-            let message;
-            if (deleteNumber > 0) {
-                message = `Unfollow user with uid ${unfollowUid} was successful.`;
-            }
-            else {
-                message = `Cannot find user with uid ${unfollowUid}.`;
-            }
-            this.sendResponse(res, { message, deleteNumber });
+            const { uid, unfollowingUid } = req.body;
+            if (!this.isUidCorrect(unfollowingUid, uid))
+                return next(error_list_1.ERROR.BAD_REQUEST('Unfollow failed.'));
+            const isUnfollowSuccess = yield follower_service_1.default.unfollow(uid, unfollowingUid);
+            if (!isUnfollowSuccess)
+                return next(error_list_1.ERROR.BAD_REQUEST('Unfollow failed.'));
+            this.sendResponse(res, null);
         }));
+    }
+    // -------------------------------
+    // Private methods
+    // -------------------------------
+    isUidCorrect(followingUid, myUid) {
+        const isFollowingUidValid = typeof followingUid === 'string' && followingUid.length === 12;
+        const isDifferentFromMyUid = followingUid !== myUid;
+        return isFollowingUidValid && isDifferentFromMyUid;
     }
 }
 exports.default = new FollowerController();

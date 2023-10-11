@@ -14,23 +14,22 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const models_1 = require("../../database/models");
 const base_service_1 = __importDefault(require("../../shared/services/base.service"));
+const user_service_1 = __importDefault(require("../user/user.service"));
 class FollowerService extends base_service_1.default {
     /**
      * Add record to the `Followers` table
      */
-    follow(followerUid, followingUid) {
-        const _super = Object.create(null, {
-            create: { get: () => super.create }
-        });
+    follow(followerUid, followingUid, pro) {
         return __awaiter(this, void 0, void 0, function* () {
-            const data = {
-                followerUid,
-                followingUid
-            };
-            // If user we try to follow not exists in db -> error happens that will be catched by error handler
-            yield _super.create.call(this, data);
-            // If no error occurred, the follow operation was successful
-            return true;
+            const followerUidCount = yield this.countRecords(followerUid);
+            if (followerUidCount < 50)
+                return this.createFollowersRecord(followerUid, followingUid);
+            if (followerUidCount >= 50 && !pro)
+                return false;
+            const isPro = yield this.checkProStatus(followerUid);
+            if (isPro)
+                return this.createFollowersRecord(followerUid, followingUid);
+            return false;
         });
     }
     /**
@@ -46,7 +45,39 @@ class FollowerService extends base_service_1.default {
                 followingUid: unfollowingUid
             };
             const res = yield _super.deleteBulk.call(this, data);
-            return res;
+            return res > 0;
+        });
+    }
+    // -------------------------------
+    // Private methods
+    // -------------------------------
+    countRecords(followerUid) {
+        const _super = Object.create(null, {
+            count: { get: () => super.count }
+        });
+        return __awaiter(this, void 0, void 0, function* () {
+            const count = yield _super.count.call(this, { followerUid });
+            return count;
+        });
+    }
+    checkProStatus(uid) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const user = yield user_service_1.default.getUserByUid(uid);
+            return user ? user.pro.level > 0 : false;
+        });
+    }
+    createFollowersRecord(followerUid, followingUid) {
+        const _super = Object.create(null, {
+            create: { get: () => super.create }
+        });
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const followersRecord = yield _super.create.call(this, { followerUid, followingUid });
+                return !!followersRecord;
+            }
+            catch (error) {
+                return false;
+            }
         });
     }
 }

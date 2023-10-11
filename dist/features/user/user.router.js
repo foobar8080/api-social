@@ -9,7 +9,7 @@ const user_controller_1 = __importDefault(require("./user.controller"));
 const uid_middleware_1 = require("../../shared/middlewares/uid.middleware");
 const request_ip_1 = __importDefault(require("request-ip")); // https://www.npmjs.com/package/request-ip Get user ip and set it on the `req.clientIp`
 const userRouter = (0, express_1.Router)();
-userRouter.get(
+userRouter.post(
 // Create / Get one record in `Users` table
 '/user/initialize', request_ip_1.default.mw(), guards_middleware_1.default.isBannedByIP, guards_middleware_1.default.verifyToken, uid_middleware_1.generateUid, user_controller_1.default.authorizeMe());
 userRouter.get(
@@ -21,7 +21,9 @@ userRouter.get(
 userRouter.patch(
 // Update `name`, `details`, `profileUpdatedAt` in `Users` table
 '/user', guards_middleware_1.default.verifyToken, uid_middleware_1.generateUid, user_controller_1.default.updateUserInfo());
-// Change `pro`, `proEnd` in `Users` table
+userRouter.patch(
+// Change `pro` in `Users` table
+'/user/pro', guards_middleware_1.default.verifyToken, uid_middleware_1.generateUid, user_controller_1.default.updateProRecord());
 userRouter.patch(
 // Update `role` in `Users` table
 '/user/role', guards_middleware_1.default.verifyToken, uid_middleware_1.generateUid, guards_middleware_1.default.isSuperAdmin, user_controller_1.default.updateUserRole());

@@ -26,7 +26,7 @@ ExceptionHandler.handleNotFound = (req, res, next) => {
 ExceptionHandler.handleError = (err, req, res, next) => {
     console.log(err);
     const internalServerError = http_status_1.HTTP_STATUS.INTERNAL_SERVER_ERROR;
-    const [message, code, details] = err.message.split(' # '); // see api-social\src\shared\exception-handler\error.ts
+    const [message, details] = err.message.split(' # '); // see api-social\src\shared\exception-handler\error.ts
     const error = {
         success: false,
         statusCode: err instanceof http_errors_1.HttpError ? err.statusCode : internalServerError.statusCode,
@@ -34,8 +34,6 @@ ExceptionHandler.handleError = (err, req, res, next) => {
         message: message || internalServerError.message,
         service: 'api-social'
     };
-    if (code)
-        error.code = code;
     if (details)
         error.details = details;
     return res.status(error.statusCode).json(error);

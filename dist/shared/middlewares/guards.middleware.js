@@ -57,7 +57,7 @@ class Guards {
                     const bannedUser = (yield banned_user_service_1.default.getBannedRecords('ip', ip));
                     if (bannedUser.length > 0) {
                         const message = (0, ban_message_1.banMessage)(bannedUser[0].unbanAt, bannedUser[0].banId);
-                        return next(error_list_1.ERROR.BANNED(message));
+                        return next(error_list_1.ERROR.FORBIDDEN(message));
                     }
                 }
                 next();
@@ -77,12 +77,12 @@ class Guards {
                 const authHeader = req.header('Authorization');
                 const token = authHeader === null || authHeader === void 0 ? void 0 : authHeader.split(' ')[1];
                 if (!token)
-                    return next(error_list_1.ERROR.NO_TOKEN());
+                    return next(error_list_1.ERROR.UNAUTHORIZED('Authentication failed: No token provided.'));
                 // Error can occurs when token is invalid or expired
                 const decodedToken = yield firebaseAdmin.auth().verifyIdToken(token);
                 // Error can occurs if the structure of the `decodedToken` is changed
                 if (!((_c = (_b = (_a = decodedToken === null || decodedToken === void 0 ? void 0 : decodedToken.firebase) === null || _a === void 0 ? void 0 : _a.identities) === null || _b === void 0 ? void 0 : _b['google.com']) === null || _c === void 0 ? void 0 : _c[0]))
-                    return next(error_list_1.ERROR.AUTH_PARSE_ERROR());
+                    return next(error_list_1.ERROR.INTERNAL_SERVER_ERROR('An error occurred on the server: Failed to parse auth data due to admin library.'));
                 const tokenData = {
                     name: decodedToken === null || decodedToken === void 0 ? void 0 : decodedToken.name,
                     avatar: (decodedToken === null || decodedToken === void 0 ? void 0 : decodedToken.picture) || '',
@@ -94,7 +94,7 @@ class Guards {
                 next();
             }
             catch (error) {
-                next(error_list_1.ERROR.TOKEN_ERROR());
+                next(error_list_1.ERROR.UNAUTHORIZED('Authentication error: Token validation failed.'));
             }
         });
     }
@@ -108,7 +108,7 @@ class Guards {
                 const adminCandidate = yield user_service_1.default.getUserByUid(uid);
                 if ((adminCandidate === null || adminCandidate === void 0 ? void 0 : adminCandidate.role) === 'admin' || (adminCandidate === null || adminCandidate === void 0 ? void 0 : adminCandidate.role) === 'superadmin')
                     return next();
-                next(error_list_1.ERROR.ADMIN_ONLY());
+                next(error_list_1.ERROR.FORBIDDEN('Access to the requested resource is forbidden as the route is exclusively available for administrators only.'));
             }
             catch (error) {
                 next(error);
@@ -125,7 +125,7 @@ class Guards {
                 const adminCandidate = yield user_service_1.default.getUserByUid(uid);
                 if ((adminCandidate === null || adminCandidate === void 0 ? void 0 : adminCandidate.role) === 'superadmin')
                     return next();
-                next(error_list_1.ERROR.SUPER_ADMIN_ONLY());
+                next(error_list_1.ERROR.FORBIDDEN('Access to the requested resource is forbidden as the route is exclusively available for superadmin only.'));
             }
             catch (error) {
                 next(error);

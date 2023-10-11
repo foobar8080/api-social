@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 class ResponseHandler {
-    static send(res, payload, statusCode = 200) {
+    static send(res, payload, statusCode = 200, success = true) {
         const response = {
-            success: true,
+            success,
             payload
         };
         return res.status(statusCode).json(response);
