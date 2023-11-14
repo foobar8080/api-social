@@ -16,8 +16,8 @@ const host = (_a = process.env.DB_HOST) !== null && _a !== void 0 ? _a : 'localh
 // Superuser
 const superuser = {
     db: (_b = process.env.DB_DATABASE_DEFAULT) !== null && _b !== void 0 ? _b : 'postgres',
-    name: (_c = process.env.DB_SUPERUSER) !== null && _c !== void 0 ? _c : 'postgres',
-    password: (_d = process.env.DB_SUPERUSER_PASSWORD) !== null && _d !== void 0 ? _d : ''
+    name: (_c = process.env.DB_USERNAME_DEFAULT) !== null && _c !== void 0 ? _c : 'postgres',
+    password: (_d = process.env.DB_PASSWORD_DEFAULT) !== null && _d !== void 0 ? _d : ''
 };
 // User for API clients
 const apiUser = {
@@ -44,14 +44,14 @@ function createDatabase() {
     `);
             if (results.length === 0) {
                 yield sequelize.query(`CREATE DATABASE ${apiUser.db};`);
-                console.log('=== Database created successfully ===');
+                console.log('--> Database created successfully');
             }
             else {
-                console.log('=== Database already exists ===');
+                console.log('--> Database already exists');
             }
         }
         catch (error) {
-            console.error('=== Error creating database ===', error);
+            console.error('--> Error creating database', error);
         }
     });
 }
@@ -74,18 +74,18 @@ function createUser() {
     `);
             if (results.length === 0) {
                 yield sequelize.query(`CREATE USER ${apiUser.name} WITH PASSWORD '${apiUser.password}';`);
-                console.log('=== User created successfully ===');
+                console.log('--> User created successfully');
                 yield sequelize.query(`GRANT CONNECT ON DATABASE ${apiUser.db} TO ${apiUser.name};`);
-                console.log('=== Login privileges granted successfully ===');
+                console.log('--> Login privileges granted successfully');
                 yield sequelize.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${apiUser.name};`);
-                console.log('=== CRUD privileges granted successfully ===');
+                console.log('--> CRUD privileges granted successfully');
             }
             else {
-                console.log('=== User already exists ===');
+                console.log('--> User already exists');
             }
         }
         catch (error) {
-            console.error('=== Error creating User ===', error);
+            console.error('--> Error creating User', error);
         }
     });
 }
@@ -96,7 +96,7 @@ function dbInitializer() {
     return __awaiter(this, void 0, void 0, function* () {
         yield createDatabase();
         yield createUser();
-        console.log('=== Database and User initialization completed ===');
+        console.log('--> Database and User initialization completed');
     });
 }
 exports.dbInitializer = dbInitializer;

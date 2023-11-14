@@ -57,7 +57,7 @@ class HealthService extends base_service_1.default {
             const usedMemory = totalMemory - freeMemory;
             const health = {
                 api,
-                version: '1.5',
+                version: '1.6',
                 timestamp: new Date().toLocaleString(),
                 uptime,
                 RAM: `Total: ${totalMemory.toFixed(2)} GB / Free: ${freeMemory.toFixed(2)} GB / Used: ${usedMemory.toFixed(2)} GB`,

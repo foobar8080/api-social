@@ -41,31 +41,48 @@ const firebaseAdmin = __importStar(require("firebase-admin"));
 const banned_user_service_1 = __importDefault(require("../../features/banned-user/banned-user.service"));
 const ban_message_1 = require("../exception-handler/ban-message");
 const user_service_1 = __importDefault(require("../../features/user/user.service"));
+const net_1 = __importDefault(require("net"));
+const user_ip_service_1 = __importDefault(require("../../features/user-ip/user-ip.service"));
+const async_wrapper_middleware_1 = require("../middlewares/async-wrapper.middleware");
 const serviceAccount = require('../../../service-account-key.js');
 firebaseAdmin.initializeApp({
     credential: firebaseAdmin.credential.cert(serviceAccount)
 });
 class Guards {
     /**
+     * Middleware to save user IP to `UserIps` table if it doesn't already exist
+     */
+    static saveIpIfNotExists() {
+        return (0, async_wrapper_middleware_1.asyncWrap)((req, res, next) => __awaiter(this, void 0, void 0, function* () {
+            const { uid } = req.body;
+            const ip = req.clientIp;
+            if (ip) {
+                const typeIp = net_1.default.isIP(ip);
+                const userIpData = {
+                    userUid: uid,
+                    ip,
+                    typeIp
+                };
+                yield user_ip_service_1.default.saveIpIfNotExists(userIpData);
+            }
+            next();
+        }));
+    }
+    /**
      * Determine if the request is being made by a banned user
      */
-    static isBannedByIP(req, res, next) {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                const ip = req.clientIp;
-                if (ip) {
-                    const bannedUser = (yield banned_user_service_1.default.getBannedRecords('ip', ip));
-                    if (bannedUser.length > 0) {
-                        const message = (0, ban_message_1.banMessage)(bannedUser[0].unbanAt, bannedUser[0].banId);
-                        return next(error_list_1.ERROR.FORBIDDEN(message));
-                    }
-                }
-                next();
+    static isBannedByIpOrUid() {
+        return (0, async_wrapper_middleware_1.asyncWrap)((req, res, next) => __awaiter(this, void 0, void 0, function* () {
+            const { uid } = req.body;
+            const ip = undefined;
+            const user = ip ? { userUid: uid, ip } : { userUid: uid };
+            const bannedUser = yield banned_user_service_1.default.isBannedByIpOrUid(user);
+            if (bannedUser) {
+                const message = (0, ban_message_1.banMessage)(bannedUser.unbanAt, bannedUser.banId);
+                return next(error_list_1.ERROR.FORBIDDEN(message));
             }
-            catch (error) {
-                next(error);
-            }
-        });
+            next();
+        }));
     }
     /**
      * Check user token and extracting authorization data from a token

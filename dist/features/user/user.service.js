@@ -26,7 +26,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 /* eslint-disable @typescript-eslint/no-unused-vars */
 const sequelize_1 = require("sequelize");
 const models_1 = require("../../database/models");
-const error_list_1 = require("../../shared/exception-handler/error-list");
 const date_helper_1 = __importDefault(require("../../shared/helpers/date.helper"));
 const base_service_1 = __importDefault(require("../../shared/services/base.service"));
 const findOrCreateAttributes = [
@@ -35,13 +34,11 @@ const findOrCreateAttributes = [
     'email',
     'avatar',
     'role',
-    'details',
-    'banId',
-    'unbanAt',
-    'ips',
-    'createdAt',
-    'profileUpdatedAt',
-    'pro' // To rename `pro` to `proX` use ['pro', 'proX']
+    'profileInfo',
+    'profileInfoUpdatedAt',
+    'inShadow',
+    'pro',
+    'createdAt'
 ];
 const findOrCreateInclude = [
     {
@@ -57,31 +54,37 @@ const PROFILE_UPDATE_INTERVAL_IN_DAYS = process.env.PROFILE_UPDATE_INTERVAL_IN_D
 const profileUpdateIntervalInDays = parseInt(PROFILE_UPDATE_INTERVAL_IN_DAYS, 10);
 class UserService extends base_service_1.default {
     /**
-     * - Create / Get me from `Users` table
-     * - Update `ips` column in `Users` table if needed
-     * - Return me
+     * Get one record by `uid` from `Users` table
      */
-    getMe(candidate) {
+    getUserByUid(uid) {
         const _super = Object.create(null, {
-            findOrCreate: { get: () => super.findOrCreate },
-            updateBulk: { get: () => super.updateBulk }
+            findOne: { get: () => super.findOne }
         });
         return __awaiter(this, void 0, void 0, function* () {
-            const { uid, ips } = candidate;
-            const ip = ips[0];
-            // For the first `findOrCreate` call, only `defaults` option works; `attributes` and `include` are ignored.
+            const userRecord = yield _super.findOne.call(this, { uid });
+            if (!userRecord)
+                return null;
+            const user = userRecord.toJSON();
+            return user;
+        });
+    }
+    /**
+     * - Create / Get me from `Users` table
+     * - Return me
+     */
+    authorizeMe(candidate) {
+        const _super = Object.create(null, {
+            findOrCreate: { get: () => super.findOrCreate }
+        });
+        return __awaiter(this, void 0, void 0, function* () {
+            const { uid } = candidate;
+            // For the first `findOrCreate` call, only `defaults` option works, `attributes` and `include` are ignored.
             // As result `userRecord` can contain different columns:
-            // - for 1st call - all columns from db (`IMeFromDbNewRecord` interface)
-            // - for rest calls - only columns listed in `attributes` and `include` (`IMeFromDb` interface)
-            // Later, the function `modifyUserToDesiredStructure`, will modify user data to desired structure
+            // - for 1st call - all columns from db (`IMeNewDbRecord` interface)
+            // - for rest calls - only columns listed in `attributes` and `include` (`IMeExistedDbRecord` interface)
+            // The function `modifyUserToDesiredStructure` will modify user data to desired structure
             const [userRecord, isUserCreated] = yield _super.findOrCreate.call(this, { uid }, { attributes: findOrCreateAttributes, include: findOrCreateInclude, defaults: Object.assign({}, candidate) });
             const user = this.modifyUserToDesiredStructure(userRecord, isUserCreated);
-            // If user just created or IP is missing or IP already in user's IPs -> return user
-            if (isUserCreated || !ip || user.ips.includes(ip))
-                return user;
-            // Update the user's IPs and return the updated user
-            const updatedIPs = [...user.ips, ip];
-            yield _super.updateBulk.call(this, { ips: updatedIPs }, { uid });
             return user;
         });
     }
@@ -90,13 +93,13 @@ class UserService extends base_service_1.default {
         const userFromDb = userRecord.get({ plain: true });
         let user;
         if (isUserCreated) {
-            // Here `userFromDb` have `IMeFromDbNewRecord` interface
-            // Exclude googleId, firebaseId, updatedAt
-            const _c = userFromDb, { googleId, firebaseId, updatedAt } = _c, userFromDbUpdated = __rest(_c, ["googleId", "firebaseId", "updatedAt"]);
+            // Here `userFromDb` have `IMeNewDbRecord` interface
+            // Exclude googleId, firebaseId, updatedAt, reports, reportsUpdatedAt, inShadowEnd
+            const _c = userFromDb, { googleId, firebaseId, updatedAt, reports, reportsUpdatedAt, inShadowEnd } = _c, userFromDbUpdated = __rest(_c, ["googleId", "firebaseId", "updatedAt", "reports", "reportsUpdatedAt", "inShadowEnd"]);
             user = Object.assign(Object.assign({}, userFromDbUpdated), { followers: [], following: [], friends: [], followersCount: 0, followingCount: 0, friendsCount: 0 });
         }
         else {
-            // Here `userFromDb` have `IMeFromDb` interface
+            // Here `userFromDb` have `IMeExistedDbRecord` interface
             const followers = (_a = userFromDb.followers) === null || _a === void 0 ? void 0 : _a.map((item) => item.followerUid);
             const following = (_b = userFromDb.following) === null || _b === void 0 ? void 0 : _b.map((item) => item.followingUid);
             const followersCount = followers.length;
@@ -123,58 +126,14 @@ class UserService extends base_service_1.default {
                 friendsCount });
         }
         // Remove `followers` property from the user object
-        if (user.pro.level === 0) {
+        if (user.pro === 0) {
             const { followers } = user, updatedUser = __rest(user, ["followers"]);
             user = updatedUser;
         }
         return user;
     }
     /**
-     * Get one record by `uid` from `Users` table
-     */
-    getUserByUid(uid) {
-        const _super = Object.create(null, {
-            findOne: { get: () => super.findOne }
-        });
-        return __awaiter(this, void 0, void 0, function* () {
-            const userRecord = yield _super.findOne.call(this, { uid });
-            if (!userRecord)
-                return null;
-            const user = userRecord.toJSON();
-            return user;
-        });
-    }
-    /**
-     * Update any columns in `Users` table
-     */
-    updateUsers(update, where, transactionType, transaction) {
-        const _super = Object.create(null, {
-            updateBulkTransaction: { get: () => super.updateBulkTransaction },
-            updateBulkTransactionExternal: { get: () => super.updateBulkTransactionExternal },
-            updateBulk: { get: () => super.updateBulk }
-        });
-        return __awaiter(this, void 0, void 0, function* () {
-            let affectedRowsCount;
-            let updatedRows;
-            if (transaction) {
-                if (transactionType === 'internal') {
-                    [affectedRowsCount, updatedRows] = (yield _super.updateBulkTransaction.call(this, update, where, true));
-                }
-                else {
-                    [affectedRowsCount, updatedRows] = (yield _super.updateBulkTransactionExternal.call(this, update, where, true, transaction));
-                }
-            }
-            else {
-                [affectedRowsCount, updatedRows] = (yield _super.updateBulk.call(this, update, where, true));
-            }
-            if (affectedRowsCount === 0 && updatedRows.length === 0)
-                throw error_list_1.ERROR.NOT_FOUND();
-            const users = updatedRows.map((user) => user.toJSON());
-            return users.length > 1 ? users : users[0];
-        });
-    }
-    /**
-     * Update `name`, `details`, `profileUpdatedAt` in `Users` table
+     * Update `name`, `profileInfo`, `profileInfoUpdatedAt` in `Users` table
      */
     updateUserInfo(update, uid) {
         const _super = Object.create(null, {
@@ -187,23 +146,23 @@ class UserService extends base_service_1.default {
                 // [Op.or] logical OR condition to match records that satisfy at least one of the conditions inside the array:
                 [sequelize_1.Op.or]: [
                     {
-                        profileUpdatedAt: {
-                            [sequelize_1.Op.lte]: dateXDaysAgo // profileUpdatedAt <= dateXDaysAgo
+                        profileInfoUpdatedAt: {
+                            [sequelize_1.Op.lte]: dateXDaysAgo // profileInfoUpdatedAt <= dateXDaysAgo
                         }
                     },
                     {
-                        profileUpdatedAt: {
-                            [sequelize_1.Op.is]: null // profileUpdatedAt === null
+                        profileInfoUpdatedAt: {
+                            [sequelize_1.Op.is]: null // profileInfoUpdatedAt === null
                         }
                     },
                     {
                         pro: {
-                            level: {
-                                [sequelize_1.Op.gt]: 0 // pro.level > 0
-                            },
-                            end: {
-                                [sequelize_1.Op.gt]: new Date() // pro.end > current date
-                            }
+                            [sequelize_1.Op.gt]: 0 // pro > 0
+                        }
+                    },
+                    {
+                        role: {
+                            [sequelize_1.Op.or]: ['superadmin', 'admin', 'superuser'] // role === 'superadmin' || role === 'admin' || role === 'superuser'
                         }
                     }
                 ]
@@ -212,41 +171,6 @@ class UserService extends base_service_1.default {
             if (rowsCount === 0)
                 return false;
             return true;
-        });
-    }
-    /**
-     * Update `pro` in `Users` table
-     */
-    updateProRecord(uid) {
-        const _super = Object.create(null, {
-            updateBulk: { get: () => super.updateBulk }
-        });
-        return __awaiter(this, void 0, void 0, function* () {
-            const end = date_helper_1.default.calculateDate(30, 'future');
-            const proUpdate = {
-                level: 1,
-                end: new Date(end)
-            };
-            const update = { pro: proUpdate };
-            const where = { uid };
-            const [rowsCount] = (yield _super.updateBulk.call(this, update, Object.assign({}, where), false));
-            if (rowsCount === 0)
-                return false;
-            return true;
-        });
-    }
-    /**
-     * Get all records by `uid` / `name` / `email` / `role` / `pro` / `banId` / `firebaseId` from `Users` table
-     */
-    getUsersRecords(column, value) {
-        const _super = Object.create(null, {
-            findAll: { get: () => super.findAll }
-        });
-        return __awaiter(this, void 0, void 0, function* () {
-            const where = { [column]: value };
-            const records = yield _super.findAll.call(this, where);
-            const users = records.map((record) => record.toJSON());
-            return users;
         });
     }
 }

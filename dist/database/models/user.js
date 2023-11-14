@@ -18,25 +18,25 @@ User.init({
     avatar: sequelize_1.DataTypes.STRING,
     email: sequelize_1.DataTypes.STRING,
     role: sequelize_1.DataTypes.STRING,
+    roleEnd: sequelize_1.DataTypes.DATE,
     pro: {
-        type: sequelize_1.DataTypes.JSONB,
+        type: sequelize_1.DataTypes.INTEGER,
         allowNull: false,
-        defaultValue: {
-            level: 0,
-            end: null
-        }
+        defaultValue: 0
     },
-    ips: sequelize_1.DataTypes.ARRAY(sequelize_1.DataTypes.STRING),
-    details: {
+    proEnd: sequelize_1.DataTypes.DATE,
+    reports: sequelize_1.DataTypes.JSONB,
+    reportsUpdatedAt: sequelize_1.DataTypes.DATE,
+    inShadow: sequelize_1.DataTypes.BOOLEAN,
+    inShadowEnd: sequelize_1.DataTypes.DATE,
+    profileInfo: {
         type: sequelize_1.DataTypes.JSONB,
         allowNull: false,
         defaultValue: {}
     },
-    banId: sequelize_1.DataTypes.INTEGER,
-    unbanAt: sequelize_1.DataTypes.DATE,
+    profileInfoUpdatedAt: sequelize_1.DataTypes.DATE,
     googleId: sequelize_1.DataTypes.STRING,
-    firebaseId: sequelize_1.DataTypes.STRING,
-    profileUpdatedAt: sequelize_1.DataTypes.DATE
+    firebaseId: sequelize_1.DataTypes.STRING
 }, {
     sequelize: db_connection_1.default,
     tableName: 'Users'

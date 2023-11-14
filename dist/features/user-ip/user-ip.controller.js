@@ -4,6 +4,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const base_controller_1 = __importDefault(require("../../shared/controllers/base.controller"));
-class BannedUserController extends base_controller_1.default {
+class UserIpController extends base_controller_1.default {
 }
-exports.default = new BannedUserController();
+exports.default = new UserIpController();

@@ -7,24 +7,53 @@ const express_1 = require("express");
 const guards_middleware_1 = __importDefault(require("../../shared/middlewares/guards.middleware"));
 const user_controller_1 = __importDefault(require("./user.controller"));
 const uid_middleware_1 = require("../../shared/middlewares/uid.middleware");
-const request_ip_1 = __importDefault(require("request-ip")); // https://www.npmjs.com/package/request-ip Get user ip and set it on the `req.clientIp`
+// import requestIp from 'request-ip'; // https://www.npmjs.com/package/request-ip (get user IP and set it on the `req.clientIp`)
 const userRouter = (0, express_1.Router)();
+// ----------------------------------
+// Routes the client side works with
+// ----------------------------------
 userRouter.post(
 // Create / Get one record in `Users` table
-'/user/initialize', request_ip_1.default.mw(), guards_middleware_1.default.isBannedByIP, guards_middleware_1.default.verifyToken, uid_middleware_1.generateUid, user_controller_1.default.authorizeMe());
-userRouter.get(
-// Get one record by `uid` from `Users` table
-'/user/:uid', guards_middleware_1.default.verifyToken, uid_middleware_1.generateUid, guards_middleware_1.default.isAdmin, user_controller_1.default.getUserByUid());
-userRouter.get(
-// Get all records by `uid` / `name` / `email` / `role` / `pro` / `banId` / `firebaseId` from `Users` table
-'/user/:column/:value', guards_middleware_1.default.verifyToken, uid_middleware_1.generateUid, guards_middleware_1.default.isAdmin, user_controller_1.default.getUsersRecords());
+'/user', guards_middleware_1.default.verifyToken, uid_middleware_1.generateUid, user_controller_1.default.authorizeMe()
+// requestIp.mw(),
+// Guards.saveIpIfNotExists(),
+// Guards.isBannedByIpOrUid(),
+);
 userRouter.patch(
-// Update `name`, `details`, `profileUpdatedAt` in `Users` table
+// Update `name`, `profileInfo`, `profileInfoUpdatedAt` in `Users` table
 '/user', guards_middleware_1.default.verifyToken, uid_middleware_1.generateUid, user_controller_1.default.updateUserInfo());
-userRouter.patch(
-// Change `pro` in `Users` table
-'/user/pro', guards_middleware_1.default.verifyToken, uid_middleware_1.generateUid, user_controller_1.default.updateProRecord());
-userRouter.patch(
-// Update `role` in `Users` table
-'/user/role', guards_middleware_1.default.verifyToken, uid_middleware_1.generateUid, guards_middleware_1.default.isSuperAdmin, user_controller_1.default.updateUserRole());
+// userRouter.patch(
+//   // Change `pro` in `Users` table
+//   '/user/pro',
+//   Guards.verifyToken,
+//   generateUid,
+//   UserController.updateProRecord()
+// );
+// userRouter.patch(
+//   // Update `role` in `Users` table
+//   '/user/role',
+//   Guards.verifyToken,
+//   generateUid,
+//   Guards.isSuperAdmin,
+//   UserController.updateUserRole()
+// );
+// ------------------------------------------
+// Routes that can only be used from Postman
+// ------------------------------------------
+// userRouter.get(
+//   // Get one record by `uid` from `Users` table
+//   '/user/:uid',
+//   Guards.verifyToken,
+//   generateUid,
+//   Guards.isAdmin,
+//   UserController.getUserByUid()
+// );
+// userRouter.get(
+//   // Get all records by `uid` / `name` / `email` / `role` / `pro` / `banId` / `firebaseId` from `Users` table
+//   '/user/:column/:value',
+//   Guards.verifyToken,
+//   generateUid,
+//   Guards.isAdmin,
+//   UserController.getUsersRecords()
+// );
 exports.default = userRouter;

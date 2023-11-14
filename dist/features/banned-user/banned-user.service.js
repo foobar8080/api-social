@@ -12,12 +12,29 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const sequelize_1 = require("sequelize");
 const banned_user_1 = __importDefault(require("../../database/models/banned_user"));
-const date_helper_1 = __importDefault(require("../../shared/helpers/date.helper"));
 const base_service_1 = __importDefault(require("../../shared/services/base.service"));
-const user_service_1 = __importDefault(require("../user/user.service"));
-const banned_user_helper_1 = require("./banned-user.helper");
 class BannedUserService extends base_service_1.default {
+    /**
+     * Get records by `uid` / `ip` / `banId` from `BannedUsers` table
+     */
+    isBannedByIpOrUid(user) {
+        const _super = Object.create(null, {
+            findOne: { get: () => super.findOne }
+        });
+        return __awaiter(this, void 0, void 0, function* () {
+            const { userUid, ip } = user;
+            const where = ip ? { [sequelize_1.Op.or]: [{ userUid }, { ip }] } : { userUid };
+            const record = yield _super.findOne.call(this, Object.assign({}, where));
+            if (record) {
+                const bannedUser = record.toJSON();
+                console.log(777, bannedUser);
+                return bannedUser;
+            }
+            return null;
+        });
+    }
     /**
      * Get records by `uid` / `ip` / `banId` from `BannedUsers` table
      */
@@ -30,61 +47,6 @@ class BannedUserService extends base_service_1.default {
             const records = yield _super.findAll.call(this, where);
             const bannedUsers = records.map((record) => record.toJSON());
             return bannedUsers;
-        });
-    }
-    /**
-     * - Update `Users` table
-     * - Create new records in `BannedUsers` table
-     */
-    banUser(uidToBan, banId) {
-        const _super = Object.create(null, {
-            createBulkTransaction: { get: () => super.createBulkTransaction },
-            create: { get: () => super.create }
-        });
-        return __awaiter(this, void 0, void 0, function* () {
-            const banTermInDays = banned_user_helper_1.banInfo[banId].term;
-            const unbanAt = date_helper_1.default.calculateDate(banTermInDays, 'future');
-            const banUpdate = {
-                banId,
-                unbanAt: new Date(unbanAt)
-            };
-            // Update `Users` table
-            const updatedUser = (yield user_service_1.default.updateUsers(banUpdate, { uid: uidToBan }));
-            const userIps = (updatedUser === null || updatedUser === void 0 ? void 0 : updatedUser.ips) || [];
-            const newBannedUsersRecords = userIps.map((ip) => (Object.assign(Object.assign({}, banUpdate), { userUid: uidToBan, ip })));
-            // Create new records in `BannedUsers` table
-            if (newBannedUsersRecords.length > 1) {
-                yield _super.createBulkTransaction.call(this, newBannedUsersRecords);
-            }
-            else if (newBannedUsersRecords.length === 1) {
-                yield _super.create.call(this, newBannedUsersRecords[0]);
-            }
-            return true;
-        });
-    }
-    /**
-     * - Update `Users` table
-     * - Update `BannedUsers` table
-     */
-    unbanUser(uidToUnban) {
-        const _super = Object.create(null, {
-            deleteBulkTransaction: { get: () => super.deleteBulkTransaction }
-        });
-        return __awaiter(this, void 0, void 0, function* () {
-            const unbanUpdate = {
-                banId: 0,
-                unbanAt: null
-            };
-            // Update `Users` table
-            const updatedUser = (yield user_service_1.default.updateUsers(unbanUpdate, { uid: uidToUnban }));
-            const userIps = (updatedUser === null || updatedUser === void 0 ? void 0 : updatedUser.ips) || [];
-            // Update `BannedUsers` table
-            if (userIps.length > 0) {
-                const where = { ip: userIps };
-                const deletedRowCount = yield _super.deleteBulkTransaction.call(this, where);
-                return deletedRowCount > 1;
-            }
-            return true;
         });
     }
 }
